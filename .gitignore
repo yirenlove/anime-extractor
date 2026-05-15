@@ -3,3 +3,5 @@ node_modules/
 Thumbs.db
 test-*.json
 stdin_debug.txt
+
+out/
