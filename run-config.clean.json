@@ -1,0 +1,39 @@
+﻿{
+  "arguments": {
+    "name": "鍙藉摂鍔ㄦ极",
+    "searchConfig": {
+      "searchUrl": "https://www.jibi.cc/index.php/vod/search.html?wd={keyword}",
+      "subjectFormatId": "a",
+      "selectorSubjectFormatA": {
+        "selectLists": "div.module-card-item-title > a",
+        "preferShorterName": true
+      },
+      "channelFormatId": "index-grouped",
+      "selectorChannelFormatFlattened": {
+        "selectChannelNames": ".module-tab-item.tab-item span",
+        "matchChannelName": "^(?<ch>.+?)$",
+        "selectEpisodeLists": ".module-play-list-content",
+        "selectEpisodesFromList": "a",
+        "selectEpisodeLinksFromList": "",
+        "matchEpisodeSortFromName": "绗琝\s*(?<ep>\\d+)"
+      },
+      "defaultResolution": "1080P",
+      "defaultSubtitleLanguage": "CHS",
+      "onlySupportsPlayers": [],
+      "selectMedia": {
+        "distinguishSubjectName": true,
+        "distinguishChannelName": true
+      },
+      "matchVideo": {
+        "enableNestedUrl": true,
+        "matchNestedUrl": "$^",
+        "matchVideoUrl": "(^https?:\\/\\/(?:play\\.xluuss\\.com|hn\\.bfvvs\\.com|play\\.subokk\\.com).+\\.(mp4|m3u8|flv|mkv)(\\?.+)?)|(url=(?<v>https?:\\/\\/(?:play\\.xluuss\\.com|hn\\.bfvvs\\.com|play\\.subokk\\.com).+\\.(mp4|m3u8|flv|mkv)(\\?.+)?))",
+        "cookies": "quality=1080",
+        "addHeadersToVideo": {
+          "referer": ""
+        }
+      }
+    }
+  },
+  "url": "https://www.jibi.cc/index.php/vod/search.html?wd=%E7%81%AB%E5%BD%B1"
+}

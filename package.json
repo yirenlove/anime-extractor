@@ -1,0 +1,15 @@
+{
+  "name": "anime-extractor",
+  "version": "0.1.0",
+  "description": "Electron CLI tool for extracting anime video direct URLs",
+  "main": "main.js",
+  "bin": {
+    "anime-extractor": "main.js"
+  },
+  "scripts": {
+    "start": "electron main.js"
+  },
+  "dependencies": {
+    "electron": "^33.0.0"
+  }
+}
