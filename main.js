@@ -10,11 +10,22 @@ const fs = require('fs');
 const { parseConfig } = require('./lib/config');
 const { createExtractor } = require('./lib/extractor');
 const { formatOutput, formatError } = require('./lib/output');
+const { fetchSources, getSourceByName, getSources } = require('./lib/source-manager');
+const { search } = require('./lib/searcher');
+const { parseEpisodes } = require('./lib/episode-parser');
 
 // CLI 模式下不需要 GPU 加速，减少资源占用
 app.disableHardwareAcceleration();
 
+// ── Electron 生命周期 ──
+app.on('window-all-closed', () => {
+  app.quit();
+});
+
 app.whenReady().then(() => {
+  // 启动时拉取源列表
+  fetchSources().catch(err => console.warn('Source fetch failed:', err.message));
+
   // 判断 stdin 是否有数据 → 决定模式
   try {
     const stdinData = fs.readFileSync(0, 'utf-8');
@@ -66,6 +77,51 @@ function applyNavigationGuard(win) {
   });
 }
 
+// ── 清理辅助 ──
+function removeAllIPCListeners() {
+  ipcMain.removeAllListeners('fetch-sources');
+  ipcMain.removeAllListeners('search-anime');
+  ipcMain.removeAllListeners('parse-episodes');
+  ipcMain.removeAllListeners('start-extraction');
+}
+
+// ── 源管理 IPC ──
+ipcMain.on('fetch-sources', (event) => {
+  event.sender.send('sources-list', getSources());
+});
+
+ipcMain.on('search-anime', async (event, data) => {
+  const { sourceName, keyword } = data || {};
+  if (!sourceName || !keyword) { event.sender.send('search-results', []); return; }
+  try {
+    const source = getSourceByName(sourceName);
+    if (!source) {
+      event.sender.send('search-results', []);
+      return;
+    }
+    const results = await search(source, keyword);
+    event.sender.send('search-results', results);
+  } catch (err) {
+    event.sender.send('search-results', []);
+  }
+});
+
+ipcMain.on('parse-episodes', async (event, data) => {
+  const { sourceName, subjectUrl } = data || {};
+  if (!sourceName || !subjectUrl) { event.sender.send('episodes-data', { channels: [] }); return; }
+  try {
+    const source = getSourceByName(sourceName);
+    if (!source) {
+      event.sender.send('episodes-data', { channels: [] });
+      return;
+    }
+    const result = await parseEpisodes(source, subjectUrl);
+    event.sender.send('episodes-data', result);
+  } catch (err) {
+    event.sender.send('episodes-data', { channels: [] });
+  }
+});
+
 // ── CLI 模式 ──
 function runCLI(stdinData) {
   try {
@@ -110,7 +166,7 @@ function runGUI() {
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
   // 接收渲染进程发起的提取请求
-  ipcMain.on('start-extraction', (event, config) => {
+  const extractionHandler = (event, config) => {
     try {
       const parsed = parseConfig(JSON.stringify(config));
       if (!parsed.url) {
@@ -131,5 +187,12 @@ function runGUI() {
     } catch (err) {
       event.sender.send('extraction-error', { error: err.message });
     }
+  };
+
+  ipcMain.on('start-extraction', extractionHandler);
+
+  // 窗口关闭时清理所有 IPC 监听器和资源
+  win.on('closed', () => {
+    removeAllIPCListeners();
   });
 }

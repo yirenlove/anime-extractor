@@ -4,18 +4,28 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 // 白名单：只允许这些通道通信
-const SEND_CHANNELS = ['start-extraction'];
-const RECEIVE_CHANNELS = ['extraction-result', 'extraction-error', 'extraction-status'];
+const SEND_CHANNELS = ['start-extraction', 'fetch-sources', 'search-anime', 'parse-episodes'];
+const RECEIVE_CHANNELS = ['extraction-result', 'extraction-error', 'extraction-status', 'sources-list', 'search-results', 'episodes-data'];
 
 contextBridge.exposeInMainWorld('__extractor', {
   // ── 渲染进程 → 主进程（单向） ──
-  // 发送提取请求，config 包含 { url, matchVideo }
   startExtraction: (config) => {
     ipcRenderer.send('start-extraction', config);
   },
 
+  fetchSources: () => {
+    ipcRenderer.send('fetch-sources');
+  },
+
+  searchAnime: (sourceName, keyword) => {
+    ipcRenderer.send('search-anime', { sourceName, keyword });
+  },
+
+  parseEpisodes: (sourceName, subjectUrl) => {
+    ipcRenderer.send('parse-episodes', { sourceName, subjectUrl });
+  },
+
   // ── 主进程 → 渲染进程（订阅） ──
-  // 结果回调，返回 cleanup 函数用于取消订阅
   onResult: (cb) => {
     const listener = (_event, data) => cb(data);
     ipcRenderer.on('extraction-result', listener);
@@ -35,5 +45,21 @@ contextBridge.exposeInMainWorld('__extractor', {
     const listener = (_event, data) => cb(data);
     ipcRenderer.on('captcha-detected', listener);
     return () => ipcRenderer.removeListener('captcha-detected', listener);
+  },
+
+  onSourcesList: (cb) => {
+    const listener = (_event, data) => cb(data);
+    ipcRenderer.on('sources-list', listener);
+    return () => ipcRenderer.removeListener('sources-list', listener);
+  },
+  onSearchResults: (cb) => {
+    const listener = (_event, data) => cb(data);
+    ipcRenderer.on('search-results', listener);
+    return () => ipcRenderer.removeListener('search-results', listener);
+  },
+  onEpisodesData: (cb) => {
+    const listener = (_event, data) => cb(data);
+    ipcRenderer.on('episodes-data', listener);
+    return () => ipcRenderer.removeListener('episodes-data', listener);
   }
 });

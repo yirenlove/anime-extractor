@@ -13,6 +13,7 @@
     "make": "electron-forge make"
   },
   "dependencies": {
+    "cheerio": "^1.2.0",
     "electron-squirrel-startup": "^1.0.1"
   },
   "devDependencies": {
