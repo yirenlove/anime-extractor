@@ -22,10 +22,10 @@ app.on('window-all-closed', () => {
   app.quit();
 });
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // 启动时拉取源列表
-  fetchSources().catch(err => console.warn('Source fetch failed:', err.message));
-
+  await fetchSources().catch(err => console.warn('Source fetch failed:', err.message));
+  
   // 判断 stdin 是否有数据 → 决定模式
   try {
     const stdinData = fs.readFileSync(0, 'utf-8');
