@@ -11,6 +11,7 @@
       <a-descriptions-item label="耗时">{{ result.duration_ms }}ms</a-descriptions-item>
     </a-descriptions>
     <a-space style="margin-top: 8px">
+      <a-button type="primary" size="small" @click="$emit('play')">播放</a-button>
       <a-button size="small" @click="copyText(result.url)">复制 URL</a-button>
       <a-button size="small" @click="copyAll">复制全部</a-button>
     </a-space>
@@ -31,6 +32,10 @@ import type { ExtractionResult } from '../types'
 const props = defineProps<{
   result: ExtractionResult | null
   error: string | null
+}>()
+
+defineEmits<{
+  (e: 'play'): void
 }>()
 
 const copyText = (text: string) => {

@@ -75,5 +75,16 @@ onUnmounted(() => {
   cleanup?.()
 })
 
-defineExpose({ loadEpisodes })
+const getCurrentEpisodes = () => {
+  if (channels.value.length === 0) return []
+  return channels.value[activeChannel.value]?.episodes || []
+}
+
+const getCurrentEpisodeIndex = () => {
+  const eps = getCurrentEpisodes()
+  if (!selectedEpisode.value) return 0
+  return eps.findIndex(e => e.url === selectedEpisode.value!.url)
+}
+
+defineExpose({ loadEpisodes, getCurrentEpisodes, getCurrentEpisodeIndex })
 </script>

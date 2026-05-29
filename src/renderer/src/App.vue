@@ -42,7 +42,18 @@
       />
 
       <!-- Results -->
-      <ResultCard :result="extractionResult" :error="extractionError" />
+      <ResultCard :result="extractionResult" :error="extractionError" @play="onPlay" />
+
+      <!-- 播放器弹窗 -->
+      <VideoPlayer
+        v-model:open="playerVisible"
+        :url="playerUrl"
+        :referer="playerReferer"
+        :cookie="playerCookie"
+        :episodes="playerEpisodes"
+        :currentEpisodeIndex="playerEpisodeIndex"
+        @update:episode="onPlayerEpisodeChange"
+      />
     </a-layout-content>
   </a-layout>
 </template>
@@ -53,6 +64,7 @@ import SourceSelector from './components/SourceSelector.vue'
 import SearchPanel from './components/SearchPanel.vue'
 import EpisodePanel from './components/EpisodePanel.vue'
 import ResultCard from './components/ResultCard.vue'
+import VideoPlayer from './components/VideoPlayer.vue'
 import type { Source, SearchResult, Episode, ExtractionResult, WizardStep } from './types'
 
 const step = ref<WizardStep>(1)
@@ -61,6 +73,14 @@ const status = ref('')
 const extractionResult = ref<ExtractionResult | null>(null)
 const extractionError = ref<string | null>(null)
 const episodePanelRef = ref<InstanceType<typeof EpisodePanel> | null>(null)
+
+// 播放器状态
+const playerVisible = ref(false)
+const playerUrl = ref('')
+const playerReferer = ref('')
+const playerCookie = ref('')
+const playerEpisodes = ref<Episode[]>([])
+const playerEpisodeIndex = ref(0)
 
 let resultCleanup: (() => void) | null = null
 let errorCleanup: (() => void) | null = null
@@ -73,6 +93,36 @@ const onSearchSelect = (result: SearchResult) => {
   status.value = '解析剧集...'
   step.value = 3
   episodePanelRef.value?.loadEpisodes(result.url)
+}
+
+const onPlay = () => {
+  if (!extractionResult.value) return
+  playerUrl.value = extractionResult.value.url
+  playerReferer.value = extractionResult.value.referer
+  playerCookie.value = extractionResult.value.cookie
+  playerEpisodes.value = episodePanelRef.value?.getCurrentEpisodes() || []
+  playerEpisodeIndex.value = episodePanelRef.value?.getCurrentEpisodeIndex() || 0
+  playerVisible.value = true
+}
+
+const onPlayerEpisodeChange = (index: number) => {
+  playerEpisodeIndex.value = index
+  const ep = playerEpisodes.value[index]
+  if (!ep || !selectedSource.value) return
+
+  status.value = '切换剧集...'
+  const mv = selectedSource.value.searchConfig.matchVideo || {}
+  const config = JSON.parse(JSON.stringify({
+    url: ep.url,
+    matchVideo: {
+      enableNestedUrl: true,
+      matchNestedUrl: mv.matchNestedUrl || '$^',
+      matchVideoUrl: mv.matchVideoUrl || '',
+      cookies: mv.cookies || '',
+      addHeadersToVideo: mv.addHeadersToVideo || { referer: '' }
+    }
+  }))
+  window.__extractor.startExtraction(config)
 }
 
 const onExtract = (episode: Episode) => {
@@ -100,6 +150,12 @@ onMounted(() => {
   resultCleanup = window.__extractor.onResult((data: ExtractionResult) => {
     extractionResult.value = data
     status.value = `提取完成，耗时 ${data.duration_ms}ms`
+    // 如果播放器打开中，更新播放 URL
+    if (playerVisible.value) {
+      playerUrl.value = data.url
+      playerReferer.value = data.referer
+      playerCookie.value = data.cookie
+    }
   })
   errorCleanup = window.__extractor.onError((data: { error: string }) => {
     extractionError.value = data.error

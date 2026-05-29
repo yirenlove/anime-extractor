@@ -106,6 +106,7 @@ function runGUI() {
     width: 720,
     height: 640,
     title: 'Anime Extractor',
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload', 'index.js'),
       contextIsolation: true,

@@ -5,3 +5,4 @@ sources-cache.json
 *.log
 docs/
 AGENTS.md
+release/
