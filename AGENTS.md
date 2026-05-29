@@ -1,62 +1,72 @@
 # anime-extractor
 
-Electron 视频直链提取工具。双模式：CLI（stdin）或 GUI 窗口。
+视频聚合源解析工具。基于 electron-vite + TypeScript + Vue 3 + Ant Design Vue。
 
 ## 运行
 
 ```bash
-# CLI 模式 — stdin 传 JSON 配置
-cat config.json | npm start
-
-# GUI 模式 — 无 stdin 时自动进入
-npm start
+npm run dev     # 开发模式（HMR）
+npm run build   # 构建生产版本
+npm run preview # 预览构建产物
 ```
-
-- `npm start` = `electron main.js`（不是 `node main.js`）
-- Electron CLI 模式下可能需要 `--no-sandbox` 标志
-- 配置文件 JSON 中的 `$^` 等特殊字符在 PowerShell 管道传输时会被解释，导致解析错误。改用文件读取（`Get-Content -Raw file.json | .\node_modules\.bin\electron.cmd main.js`）或 `node -e "process.stdout.write(...)"` 传递
 
 ## 架构
 
 ```
-main.js                    # 入口：检测 stdin → runCLI / runGUI
-├── lib/config.js          # JSON 解析，正则预编译（纯函数）
-├── lib/interceptor.js     # URL 正则匹配：video / nested / pass（纯函数）
-├── lib/extractor.js       # 隐藏 BrowserWindow + webRequest 拦截（Electron）
-├── lib/output.js          # JSON 输出格式化（纯函数）
-├── preload.js             # contextBridge IPC 白名单
-└── renderer/index.html    # GUI 界面
+src/
+├── main/
+│   ├── index.ts               # 主进程入口
+│   └── lib/
+│       ├── config.ts          # JSON 解析，正则预编译
+│       ├── interceptor.ts     # URL 正则匹配：video / nested / pass
+│       ├── extractor.ts       # 隐藏 BrowserWindow + webRequest 拦截
+│       ├── output.ts          # JSON 输出格式化
+│       ├── source-manager.ts  # 聚合源拉取/缓存/查询
+│       ├── searcher.ts        # cheerio + CSS 选择器搜索
+│       └── episode-parser.ts  # cheerio + CSS 选择器解析线路/剧集
+├── preload/
+│   └── index.ts               # contextBridge IPC 白名单
+└── renderer/
+    ├── index.html             # Vite 入口
+    ├── env.d.ts               # 类型声明
+    └── src/
+        ├── main.ts            # Vue 应用启动
+        ├── App.vue            # 根组件（三步向导）
+        ├── components/        # Vue 组件
+        ├── types/index.ts     # 共享类型
+        └── styles/global.css
 ```
 
-- **配置**：支持两种格式自动检测 — 完整 web-selector（`{ factoryId, arguments: { searchConfig: ... } }`）和简化格式（`{ url, matchVideo: { ... } }`）
-- **匹配规则**：正则字符串在 config.js 中预编译为 `RegExp` 对象
-  - `matchVideoUrl`：视频 URL 正则，`?<v>` named group 捕获 `url=` 参数中的编码地址
-  - `matchNestedUrl`：中间页跳转正则，`enableNestedUrl: true` 时启用
-  - `addHeadersToVideo.referer === ""` 触发自动填充 Referer header
-- **提取引擎**：隐藏窗口加载目标页 → `webRequest.onBeforeRequest` 拦截 → 匹配视频则 `cb({ cancel: true })` 阻止下载弹窗 → 收集 cookies → 回调返回
-- **结束机制**：页面加载后 5s 无请求 → `no_match`；30s 全局超时 → `timeout`
-- **IPC**：只有 4 个通道通过 preload 白名单暴露（`start-extraction`、`extraction-result`、`extraction-error`、`extraction-status`）
+## 核心流程
+
+1. **源管理** — 启动时从 online.json 拉取视频聚合源列表，本地缓存
+2. **搜索** — 使用 cheerio + CSS 选择器解析搜索结果页
+3. **剧集解析** — 使用 cheerio + CSS 选择器解析线路和剧集列表
+4. **视频提取** — 隐藏窗口加载目标页 → `webRequest.onBeforeRequest` 拦截 → 匹配视频 → 收集 cookies → 返回
+
+## IPC 通道
+
+| 通道 | 方向 | 用途 |
+|------|------|------|
+| `fetch-sources` | R→M | 获取源列表 |
+| `search-anime` | R→M | 搜索番剧 |
+| `parse-episodes` | R→M | 解析线路/剧集 |
+| `start-extraction` | R→M | 提取视频直链 |
+| `sources-list` | M→R | 返回源列表 |
+| `search-results` | M→R | 返回搜索结果 |
+| `episodes-data` | M→R | 返回线路/剧集 |
+| `extraction-result` | M→R | 返回提取结果 |
+| `extraction-error` | M→R | 返回错误信息 |
 
 ## 安全
 
 - `contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`
-- CSP 仅对 GUI 窗口的 `file://` 资源生效（提取窗口的外部请求不受 CSP 限制）
+- CSP 仅对 GUI 窗口的 `file://` 资源生效
 - `will-navigate` 拦截非 data: 跳转，`setWindowOpenHandler` 拒绝弹窗
 
-## 输出格式
+## 依赖
 
-```json
-{
-  "url": "https://.../video.m3u8",
-  "referer": "https://...",
-  "cookie": "key=value",
-  "headers": { "Referer": "https://..." },
-  "duration_ms": 1475
-}
-```
-
-错误时：`{ "error": "timeout" | "no_match" | "load_failed: ..." }`
-
-## 无测试框架
-
-无 test runner、lint、typecheck。所有验证通过手动运行 CLI 模式完成。
+- electron-vite — 构建工具
+- Vue 3 — 渲染进程框架
+- Ant Design Vue — UI 组件库
+- cheerio — 服务端 HTML 解析

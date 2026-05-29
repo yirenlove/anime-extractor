@@ -1,44 +1,39 @@
 # anime-extractor
 
-Electron CLI tool for extracting anime video direct URLs.
+视频聚合源解析工具 — 从多个动漫资源站搜索、选择剧集、提取视频直链。
 
-## Usage
+## 功能
+
+- 集成 30+ 动漫资源站（animeko-source）
+- 三步向导：选源 → 搜番 → 选集 → 提取
+- 支持多线路切换
+- 视频直链提取（m3u8/mp4/flv）
+
+## 运行
 
 ```bash
-cat config.json | npx electron main.js
-# or
-Get-Content -Raw config.json | .\node_modules\.bin\electron.cmd main.js
+npm install
+npm run dev     # 开发模式
+npm run build   # 构建
+npm run preview # 预览构建产物
 ```
 
-## Config Format
+## 技术栈
 
-Supports both full `web-selector` format and simplified format:
+- Electron + electron-vite
+- TypeScript
+- Vue 3 + Ant Design Vue
+- cheerio（服务端 HTML 解析）
 
-```json
-{
-  "url": "https://www.example.com/play/123.html",
-  "matchVideo": {
-    "enableNestedUrl": true,
-    "matchNestedUrl": "$^",
-    "matchVideoUrl": "(https?://...\\.(mp4|m3u8|flv|mkv)...)",
-    "cookies": "quality=1080",
-    "addHeadersToVideo": {
-      "referer": ""
-    }
-  }
-}
+## 项目结构
+
+```
+src/
+├── main/          # 主进程（TypeScript）
+├── preload/       # 预加载脚本
+└── renderer/      # 渲染进程（Vue 3）
 ```
 
-## Output
+## 许可
 
-```json
-{
-  "url": "https://.../video.m3u8",
-  "referer": "https://...",
-  "cookie": "quality=1080",
-  "headers": {
-    "Referer": "https://..."
-  },
-  "duration_ms": 3420
-}
-```
+MIT
